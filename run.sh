@@ -1,5 +1,5 @@
 # make sure that sha256 is changed
-# sudo docker run --rm -it -v "$(pwd):/root/pintos" sha256:47a83b2b7454bcdac14cd8a257f5acd7428d6cab91af51b5c5371a5faad1ccea
+sudo docker run --rm -it -v "$(pwd):/root/pintos" sha256:47a83b2b7454bcdac14cd8a257f5acd7428d6cab91af51b5c5371a5faad1ccea
 
 # Phase 1 run
 cd ~/pintos/src/threads/

@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "utils/fixed-point.h"
 
 /* States in a thread's life cycle. */
 enum thread_status {
@@ -85,8 +86,34 @@ struct thread {
 	enum thread_status status; /* Thread state. */
 	char name[16];					/* Name (for debugging purposes). */
 	uint8_t *stack;				/* Saved stack pointer. */
-	int priority;					/* Priority. */
+	/**
+	 * `priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)`
+	 */
+	int priority;
 	struct list_elem allelem;	/* List element for all threads list. */
+
+	/**
+	 * - To measure how much CPU time each process has received "recently."
+	 * 
+	 * - Furthermore, as a refinement, more recent CPU time should be 
+	 * weighted more heavily than less recent CPU time
+	 * 
+	 */
+	fixed_t recent_cpu;
+
+	/**
+	 * - Each thread also has an integer nice value that determines 
+	 * how "nice" the thread should be to other threads.
+	 * 
+	 * - A positive nice, (MAX 20), decreases the priority of a thread 
+	 * and causes it to give up some CPU time it would otherwise receive. 
+	 * 
+	 * - A negative nice, (MIN -20), 
+	 * tends to take away CPU time from other threads.
+	 *
+	 * - A nice of zero does not affect thread priority.
+	 */
+	int nice; 
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem; /* List element. */

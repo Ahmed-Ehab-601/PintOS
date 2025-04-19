@@ -13,6 +13,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "utils/fixed-point.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -29,6 +30,8 @@ static struct list ready_list;
 /* List of all processes.  Processes are added to this list
 	when they are first scheduled and removed when they exit. */
 static struct list all_list;
+
+// static struct list ready_lists[PRI_MAX];
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -73,7 +76,7 @@ void thread_schedule_tail(struct thread *prev);
 static tid_t allocate_tid(void);
 
 /* Initializes the threading system by transforming the code
-	that's currently running into a thread.  This can't work in
+	that's currently running into a thread. This can't work in
 	general and it is possible in this case only because loader.S
 	was careful to put the bottom of the stack at a page boundary.
 
@@ -97,6 +100,7 @@ void thread_init(void) {
 	init_thread(initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid();
+
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -111,7 +115,7 @@ void thread_start(void) {
 	intr_enable();
 
 	/* Wait for the idle thread to initialize idle_thread. */
-	sema_down(&idle_started);
+	sema_down(&idle_started); // idle_thread is blocked
 }
 
 /* Called by the timer interrupt handler at each timer tick.
@@ -299,19 +303,28 @@ void thread_foreach(thread_action_func *func, void *aux) {
 	}
 }
 
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority) { thread_current()->priority = new_priority; }
 
 /* Returns the current thread's priority. */
 int thread_get_priority(void) { return thread_current()->priority; }
 
-/* Sets the current thread's nice value to NICE. */
-void thread_set_nice(int nice UNUSED) { /* Not yet implemented. */ }
+/**
+ * ### Sets the current thread's nice value to NICE.
+ * 
+ * recalculates the thread's priority based on the new value
+ * If the running thread no longer has the highest priority, yields.
+ */
+void thread_set_nice(int nice UNUSED) {
+	// thread_current()->nice = nice;
+	// mlfqs_recalculate_priority(thread_current());
+	// thread_yield();
+}
 
 /* Returns the current thread's nice value. */
 int thread_get_nice(void) {
-	/* Not yet implemented. */
-	return 0;
+	// return running_thread()->nice;
 }
 
 /* Returns 100 times the system load average. */
@@ -320,13 +333,16 @@ int thread_get_load_avg(void) {
 	return 0;
 }
 
-/* Returns 100 times the current thread's recent_cpu value. */
+/**
+ * Returns 100 times the current thread's recent_cpu value.
+ * `recent_cpu = (2 * load_avg) / (2 * load_avg + 1) * recent_cpu + nice`
+*/
 int thread_get_recent_cpu(void) {
 	/* Not yet implemented. */
 	return 0;
 }
 
-/* Idle thread.  Executes when no other thread is ready to run.
+/* Idle thread. Executes when no other thread is ready to run.
 
 	The idle thread is initially put on the ready list by
 	thread_start().  It will be scheduled once initially, at which
@@ -400,7 +416,9 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 	t->stack = (uint8_t *)t + PGSIZE;
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
-
+	// t->nice = 0;
+	// t->recent_cpu = 0;
+	
 	old_level = intr_disable();
 	list_push_back(&all_list, &t->allelem);
 	intr_set_level(old_level);

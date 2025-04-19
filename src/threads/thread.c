@@ -22,6 +22,9 @@
 	of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+
+
+
 /* List of processes in THREAD_READY state, that is, processes
 	that are ready to run but not actually running. */
 static struct list ready_list;
@@ -221,11 +224,11 @@ void thread_unblock(struct thread *t) {
 
 	ASSERT(is_thread(t));
 
-	old_level = intr_disable();
-	ASSERT(t->status == THREAD_BLOCKED);
-	list_push_back(&ready_list, &t->elem);
-	t->status = THREAD_READY;
-	intr_set_level(old_level);
+  old_level = intr_disable ();
+  ASSERT (t->status == THREAD_BLOCKED);
+  list_insert_ordered (&ready_list, &t->elem, &thread_priority_compare, NULL);
+  t->status = THREAD_READY;
+  intr_set_level (old_level);
 }
 
 /* Returns the name of the running thread. */
@@ -276,14 +279,12 @@ void thread_yield(void) {
 	struct thread *cur = thread_current();
 	enum intr_level old_level;
 
-	ASSERT(!intr_context());
-
-	old_level = intr_disable();
-	if (cur != idle_thread)
-		list_push_back(&ready_list, &cur->elem);
-	cur->status = THREAD_READY;
-	schedule();
-	intr_set_level(old_level);
+  old_level = intr_disable ();
+  if (cur != idle_thread) 
+    list_insert_ordered (&ready_list, &cur->elem,(list_less_func *) &thread_priority_compare, NULL);
+  cur->status = THREAD_READY;
+  schedule ();
+  intr_set_level (old_level);
 }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
@@ -300,8 +301,22 @@ void thread_foreach(thread_action_func *func, void *aux) {
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
-void thread_set_priority(int new_priority) { thread_current()->priority = new_priority; }
-
+void thread_set_priority (int new_priority) {
+  enum intr_level old_level = intr_disable();
+  struct thread *cur = thread_current();
+  int old_priority = cur->priority;
+  cur->priority = new_priority;
+  
+  /* Only yield if our new priority is lower than before
+     and there's a higher priority thread waiting */
+  if (new_priority < old_priority && !list_empty(&ready_list)) {
+     struct thread *next = list_entry(list_begin(&ready_list), struct thread, elem);
+     if (next->priority > new_priority)
+        thread_yield();
+  }
+  
+  intr_set_level (old_level);
+}
 /* Returns the current thread's priority. */
 int thread_get_priority(void) { return thread_current()->priority; }
 
@@ -418,15 +433,27 @@ static void *alloc_frame(struct thread *t, size_t size) {
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
-	return a thread from the run queue, unless the run queue is
-	empty.  (If the running thread can continue running, then it
-	will be in the run queue.)  If the run queue is empty, return
-	idle_thread. */
-static struct thread *next_thread_to_run(void) {
-	if (list_empty(&ready_list))
-		return idle_thread;
-	else
-		return list_entry(list_pop_front(&ready_list), struct thread, elem);
+   return a thread from the run queue, unless the run queue is
+   empty.  (If the running thread can continue running, then it
+   will be in the run queue.)  If the run queue is empty, return
+   idle_thread. */
+static struct thread *
+next_thread_to_run (void) 
+{
+  if(thread_mlfqs){
+    // nour w ragy beeh 🙈🙈
+
+  }
+  else{
+      
+      if (list_empty (&ready_list))
+      return idle_thread;
+      else
+      return list_entry (list_pop_front (&ready_list), struct thread, elem);
+
+  }
+ 
+ 
 }
 
 /* Completes a thread switch by activating the new thread's page

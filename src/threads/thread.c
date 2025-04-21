@@ -207,6 +207,7 @@ tid_t thread_create(const char *name, int priority, thread_func *function, void 
 	}
 	tid = t->tid = allocate_tid();
 
+    t->wakeup_time = -1; // Initialize wakeup time to -1 (not sleeping) #############
 	/* Stack frame for kernel_thread(). */
 	kf = alloc_frame(t, sizeof *kf);
 	kf->eip = NULL;
@@ -590,19 +591,19 @@ static void *alloc_frame(struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run(void)
 {
-	if (thread_mlfqs)
-	{
-		// nour w ragy beeh 🙈🙈
-	}
-	else
-	{
+	// if (thread_mlfqs)
+	// {
+	// 	// nour w ragy beeh 🙈🙈
+	// }
+	// else
+	// {
 
 		if (list_empty(&ready_list))
 			return idle_thread;
 		else
 			return list_entry(list_pop_front(&ready_list), struct thread, elem);
 	}
-}
+// }
 
 /* Completes a thread switch by activating the new thread's page
 	tables, and, if the previous thread is dying, destroying it.

@@ -35,10 +35,13 @@ static void real_time_delay(int64_t num, int32_t denom);
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
 	and registers the corresponding interrupt. */
-void timer_init(void) {
-	pit_configure_channel(0, 2, TIMER_FREQ);
-	intr_register_ext(0x20, timer_interrupt, "8254 Timer");
-}
+  void
+  timer_init (void) 
+  {
+    pit_configure_channel (0, 2, TIMER_FREQ);
+    intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+    list_init (&sleeping_list); //3###############
+  }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
 void timer_calibrate(void) {
@@ -76,14 +79,28 @@ int64_t timer_ticks(void) {
 	should be a value once returned by timer_ticks(). */
 int64_t timer_elapsed(int64_t then) { return timer_ticks() - then; }
 
-/* Sleeps for approximately TICKS timer ticks.  Interrupts must
-	be turned on. */
-void timer_sleep(int64_t ticks) {
-	int64_t start = timer_ticks();
-
-	ASSERT(intr_get_level() == INTR_ON);
-	while (timer_elapsed(start) < ticks) thread_yield();
+static bool sleep_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+  struct thread *ta = list_entry(a, struct thread, elem);
+  struct thread *tb = list_entry(b, struct thread, elem);
+  return ta->wakeup_time < tb->wakeup_time;
 }
+
+/* Sleeps for approximately TICKS timer ticks.  Interrupts must
+   be turned on. */
+   void timer_sleep(int64_t ticks) {
+    if (ticks <= 0)
+      return;
+      
+    int64_t start = timer_ticks();
+    struct thread *current_thread = thread_current();
+    current_thread->wakeup_time = start + ticks;
+    
+    ASSERT(intr_get_level() == INTR_ON);
+    enum intr_level old_level = intr_disable();
+    list_insert_ordered(&sleeping_list, &current_thread->elem, sleep_less, NULL);
+    thread_block();
+    intr_set_level(old_level);
+  }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
 	turned on. */
@@ -127,17 +144,40 @@ void timer_ndelay(int64_t ns) { real_time_delay(ns, 1000 * 1000 * 1000); }
 /* Prints timer statistics. */
 void timer_print_stats(void) { printf("Timer: %" PRId64 " ticks\n", timer_ticks()); }
 
-/* Timer interrupt handler. */
-static void timer_interrupt(struct intr_frame *args UNUSED) {
-	ticks++;
+// /* Timer interrupt handler. */
+// static void timer_interrupt(struct intr_frame *args UNUSED) {
+// 	ticks++;
 
-	/* Update the thread's recent_cpu, load_avg and priority */
-	if(thread_mlfqs) {
+// 	/* Update the thread's recent_cpu, load_avg and priority */
+// 	if(thread_mlfqs) {
+// 		mlfqs_timer_interrupt();
+// 	}
+	
+// 	thread_tick();
+// }
+
+
+static void timer_interrupt (struct intr_frame *args UNUSED) {
+  ticks++;
+  thread_tick ();
+  if(thread_mlfqs) {
 		mlfqs_timer_interrupt();
 	}
-	
-	thread_tick();
+  enum intr_level old_level = intr_disable ();
+  while (!list_empty(&sleeping_list)) {
+    struct thread *t = list_entry (list_front(&sleeping_list), struct thread, elem);
+    if (t->wakeup_time <= ticks && t->wakeup_time != -1) {
+      list_pop_front(&sleeping_list);
+      thread_unblock(t);
+      t->wakeup_time = -1;
+    } else {
+      break; 
+    }
+  }
+  intr_set_level (old_level);
 }
+
+
 
 /**
  * #### Timer interrupt handling for MLFQS Scheme

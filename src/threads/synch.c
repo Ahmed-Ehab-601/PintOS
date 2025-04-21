@@ -34,6 +34,22 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+
+/* Compares the priorities of two threads.
+   Returns true if the priority of thread A is higher than
+   the priority of thread B. 
+   a: List element for the first thread.
+   b: List element for the second thread.
+   aux: Unused auxiliary data. */
+
+bool thread_priority_compare (const struct list_elem *a, const struct list_elem *b, void *aux) {
+  struct thread *threadA = list_entry (a, struct thread, elem);
+  struct thread *threadB = list_entry (b, struct thread, elem);
+  return threadA->priority > threadB->priority;
+}
+
+
+
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
 	nonnegative integer along with two atomic operators for
 	manipulating it:
@@ -63,13 +79,14 @@ void sema_down(struct semaphore *sema) {
 	ASSERT(sema != NULL);
 	ASSERT(!intr_context());
 
-	old_level = intr_disable();
-	while (sema->value == 0) {
-		list_push_back(&sema->waiters, &thread_current()->elem);
-		thread_block();
-	}
-	sema->value--;
-	intr_set_level(old_level);
+  old_level = intr_disable ();
+  while (sema->value == 0) 
+    {
+      list_insert_ordered (&sema->waiters, &thread_current ()->elem,(list_less_func *) &thread_priority_compare, NULL);
+      thread_block ();
+    }
+  sema->value--;
+  intr_set_level (old_level);
 }
 
 /* Down or "P" operation on a semaphore, but only if the
@@ -100,15 +117,27 @@ bool sema_try_down(struct semaphore *sema) {
 	This function may be called from an interrupt handler. */
 void sema_up(struct semaphore *sema) {
 	enum intr_level old_level;
-
+	struct thread *unblocked = NULL;
+ 
 	ASSERT(sema != NULL);
-
+ 
 	old_level = intr_disable();
-	if (!list_empty(&sema->waiters))
-		thread_unblock(list_entry(list_pop_front(&sema->waiters), struct thread, elem));
+	if (!list_empty(&sema->waiters)) {
+	  unblocked = list_entry(list_pop_front(&sema->waiters), struct thread, elem);
+	  thread_unblock(unblocked);
+	}
 	sema->value++;
+	
+	if (unblocked != NULL && unblocked->priority > thread_current()->priority) {
+	  if (!intr_context()) {
+		 thread_yield();
+	  } else {
+		 intr_yield_on_return();
+	  }
+	}
+	
 	intr_set_level(old_level);
-}
+ }
 
 static void sema_test_helper(void *sema_);
 
@@ -221,11 +250,28 @@ bool lock_held_by_current_thread(const struct lock *lock) {
 }
 
 /* One semaphore in a list. */
-struct semaphore_elem {
-	struct list_elem elem;		 /* List element. */
-	struct semaphore semaphore; /* This semaphore. */
-};
+struct semaphore_elem 
+  {
+    struct list_elem elem;              /* List element. */
+    struct semaphore semaphore;         /* This semaphore. */
+    int priority;                       /* Thread priority. */
+  };
 
+/* Compares two semaphore elements by their highest priority thread.
+   Returns true if the highest priority thread waiting on semaphore A
+   has a higher priority than the highest priority thread waiting on
+   semaphore B. */
+
+   bool
+   sema_priority_compare(const struct list_elem *a, const struct list_elem *b, void *aux)
+   {
+     
+     const struct semaphore_elem *sa = list_entry(a, struct semaphore_elem, elem);
+     const struct semaphore_elem *sb = list_entry(b, struct semaphore_elem, elem);
+      
+     /* Return true if thread a's priority is HIGHER than thread b's */
+     return sa->priority > sb->priority;
+   }  
 /* Initializes condition variable COND.  A condition variable
 	allows one piece of code to signal a condition and cooperating
 	code to receive the signal and act upon it. */
@@ -251,23 +297,26 @@ void cond_init(struct condition *cond) {
 	condition variables.  That is, there is a one-to-many mapping
 	from locks to condition variables.
 
-	This function may sleep, so it must not be called within an
-	interrupt handler.  This function may be called with
-	interrupts disabled, but interrupts will be turned back on if
-	we need to sleep. */
-void cond_wait(struct condition *cond, struct lock *lock) {
-	struct semaphore_elem waiter;
+   This function may sleep, so it must not be called within an
+   interrupt handler.  This function may be called with
+   interrupts disabled, but interrupts will be turned back on if
+   we need to sleep. */
+void
+cond_wait (struct condition *cond, struct lock *lock) {
+  struct semaphore_elem waiter;
+  
+  ASSERT (cond != NULL);
+  ASSERT (lock != NULL);
+  ASSERT (!intr_context ());
+  ASSERT (lock_held_by_current_thread (lock));
+  
+  waiter.priority = thread_current ()->priority;
 
-	ASSERT(cond != NULL);
-	ASSERT(lock != NULL);
-	ASSERT(!intr_context());
-	ASSERT(lock_held_by_current_thread(lock));
-
-	sema_init(&waiter.semaphore, 0);
-	list_push_back(&cond->waiters, &waiter.elem);
-	lock_release(lock);
-	sema_down(&waiter.semaphore);
-	lock_acquire(lock);
+  sema_init (&waiter.semaphore, 0);
+  list_insert_ordered (&cond->waiters, &waiter.elem,(list_less_func *)&sema_priority_compare, NULL);
+  lock_release (lock);
+  sema_down (&waiter.semaphore);
+  lock_acquire (lock);
 }
 
 /* If any threads are waiting on COND (protected by LOCK), then

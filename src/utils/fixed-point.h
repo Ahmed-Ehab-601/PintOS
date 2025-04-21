@@ -1,5 +1,5 @@
-#ifndef THREADS_FIXED_POINT_H
-#define THREADS_FIXED_POINT_H
+#ifndef UTILS_FIXED_POINT_H
+#define UTILS_FIXED_POINT_H
 
 #include <stdint.h>
 #include <stdio.h>
@@ -18,7 +18,7 @@ typedef int fixed_t;
 #define FP_TO_INT_ZERO(x) ((x) / F)
 
 // Convert fixed-point x to integer (rounding to nearest)
-#define FP_TO_INT_NEAREST(x) ((x) >= 0 ? ((x) + F / 2) / F : ((x) - F / 2) / F)
+#define FP_ROUND_TO_NEAREST_INT(x) ((x) >= 0 ? ((x) + F / 2) / F : ((x) - F / 2) / F)
 
 // Add two fixed-point values
 #define ADD_FP(x, y) ((x) + (y))
@@ -45,19 +45,19 @@ typedef int fixed_t;
 #define DIV_INT(x, n) (x / n)
 
 
-char* fixed_t_to_string(fixed_t num) {
-	static char buffer[35];
-	int integer_part = FP_TO_INT_ZERO(num);
-	int abs_num = num >= 0 ? num : -num;
-	int fraction_part = (abs_num % F) * 100 / F;
+// char* fixed_t_to_string(fixed_t num) {
+// 	static char buffer[35];
+// 	int integer_part = FP_TO_INT_ZERO(num);
+// 	int abs_num = num >= 0 ? num : -num;
+// 	int fraction_part = (abs_num % F) * 100 / F;
 
-	if (num < 0 && integer_part == 0)
-		snprintf(buffer, sizeof(buffer), "-0.%02d", fraction_part);
-	else
-		snprintf(buffer, sizeof(buffer), "%d.%02d", integer_part, fraction_part);
+// 	if (num < 0 && integer_part == 0)
+// 		snprintf(buffer, sizeof(buffer), "-0.%02d", fraction_part);
+// 	else
+// 		snprintf(buffer, sizeof(buffer), "%d.%02d", integer_part, fraction_part);
 
-	return buffer;
-}
+// 	return buffer;
+// }
 
 
 #endif /* threads/fixed_point.h */

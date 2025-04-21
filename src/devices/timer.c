@@ -130,17 +130,38 @@ void timer_print_stats(void) { printf("Timer: %" PRId64 " ticks\n", timer_ticks(
 /* Timer interrupt handler. */
 static void timer_interrupt(struct intr_frame *args UNUSED) {
 	ticks++;
-	if (timer_ticks() % TIMER_FREQ == 0) {
-		// update the load_avg
-		// update the recent_cpu for all threads
-		
-	} else {
-		// increment the recent_cpu for the running thread
-		struct thread *run_thread = running_thread();
-		ADD_INT(run_thread->recent_cpu, 1);
+
+	/* Update the thread's recent_cpu, load_avg and priority */
+	if(thread_mlfqs) {
+		mlfqs_timer_interrupt();
 	}
+	
 	thread_tick();
 }
+
+/**
+ * #### Timer interrupt handling for MLFQS Scheme
+ * - update the load_avg `each 100 ticks`
+ * - update the recent_cpu for all threads `each 100 ticks`
+ * - increment the recent_cpu of running thread (not idle_thread) `each timer interrupt`
+ * - update the priority for all threads `each 4 ticks`
+ * - nice value remains unchanged
+ */
+void mlfqs_timer_interrupt() {
+	int timer_freq = timer_ticks();
+
+	if (timer_freq % TIMER_FREQ == 0) { // every 100 ticks
+		update_load_avg();
+		update_recent_cpu();
+	} else {
+		increment_recent_cpu(thread_current());
+	}
+
+	if (timer_freq % 4 == 0) {
+		update_priorities();
+	}
+}
+
 
 /* Returns true if LOOPS iterations waits for more than one timer
 	tick, otherwise false. */

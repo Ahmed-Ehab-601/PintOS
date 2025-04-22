@@ -115,6 +115,12 @@ struct thread {
 	 */
 	int nice; 
 
+	int base_priority;
+	struct lock * waiting_on;		 /* The lock that the thread is waiting on. */
+	struct list locks_held; 		 /* List of locks held by the thread. */
+	// Use a separate list_elem field specifically for the lock->waiters list — this avoids conflicts with other uses of thread->elem.
+	struct list_elem lock_waiter_elem;
+	
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem; /* List element. */
 	int64_t wakeup_time;               /* Time to wake up. ############*/

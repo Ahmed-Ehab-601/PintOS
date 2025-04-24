@@ -79,14 +79,14 @@ void sema_down(struct semaphore *sema) {
 	ASSERT(sema != NULL);
 	ASSERT(!intr_context());
 
-  old_level = intr_disable ();
-  while (sema->value == 0) 
-    {
-      list_insert_ordered (&sema->waiters, &thread_current ()->elem,(list_less_func *) &thread_priority_compare, NULL);
-      thread_block ();
-    }
-  sema->value--;
-  intr_set_level (old_level);
+	old_level = intr_disable ();
+	while (sema->value == 0) 
+	{
+	list_push_back (&sema->waiters, &thread_current ()->elem);
+	thread_block ();
+	}
+	sema->value--;
+	intr_set_level (old_level);
 }
 
 /* Down or "P" operation on a semaphore, but only if the
@@ -123,9 +123,7 @@ void sema_up(struct semaphore *sema) {
  
 	old_level = intr_disable();
 	if (!list_empty(&sema->waiters)) {
-
 		list_sort(&sema->waiters, (list_less_func *) &thread_priority_compare, NULL);
-
 		unblocked = list_entry(list_pop_front(&sema->waiters), struct thread, elem);
 		thread_unblock(unblocked);
 	}
@@ -191,7 +189,7 @@ static void sema_test_helper(void *sema_) {
 void lock_init(struct lock *lock) {
 	ASSERT(lock != NULL);
 
-	list_init(&lock->waiters);
+	list_init(&lock->semaphore.waiters);
 	lock->holder = NULL;
 	sema_init(&lock->semaphore, 1);
 }
@@ -216,8 +214,7 @@ void lock_acquire(struct lock *lock) {
 	struct thread *current = thread_current();
 
 	if(!thread_mlfqs) {
-		list_push_back(&lock->waiters, &current->lock_waiter_elem); // add thread to list or waiters for the lock
-	
+		list_push_back(&lock->semaphore.waiters, &current->lock_waiter_elem); // add thread to list or waiters for the lock
 		donate_priority(thread_current(), lock);
 	}
 

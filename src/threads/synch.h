@@ -24,7 +24,6 @@ bool sema_priority_compare(const struct list_elem *a, const struct list_elem *b,
 struct lock {
 	struct thread *holder;		 	/* Thread holding lock (for debugging). */
 	struct semaphore semaphore; 	/* Binary semaphore controlling access. */
-	struct list waiters; 			/* List of waiting threads. */
 	struct list_elem elem;
 };
 

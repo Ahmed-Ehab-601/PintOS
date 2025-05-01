@@ -198,6 +198,7 @@ lock_acquire (struct lock *lock)
 
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
+  list_push_back (&thread_current ()->lock_list, &lock->elem);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -233,6 +234,8 @@ lock_release (struct lock *lock)
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+
+  list_remove (&lock->elem);
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -335,4 +338,12 @@ cond_broadcast (struct condition *cond, struct lock *lock)
 
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
+}
+
+void release_all_locks(){
+  struct thread *t = thread_current();
+  while(!list_empty(&t->lock_list)){
+    struct lock *lock = list_entry(list_pop_front(&t->lock_list), struct lock, elem);
+    lock_release(lock);
+  }
 }

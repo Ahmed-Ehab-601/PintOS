@@ -4,10 +4,9 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "userprog/pagedir.h"
+#include "pagedir.h"
 #include "threads/init.h"
 #include "threads/synch.h"
-#include "devices/shutdown.h"
 
 static void syscall_handler(struct intr_frame *);
 
@@ -23,10 +22,10 @@ syscall_handler(struct intr_frame *f)
   void * esp = conv_virtual(f->esp);
   int systemCall = *(int *)esp;
   int numberOfArgs = get_number_of_args(systemCall);
-  load_args(args, numberOfArgs, (int *) f->esp);
+  //load_args(args, numberOfArgs, (int *) f->esp);
   switch (systemCall) {
   case SYS_HALT:
-    halt();
+    shutdown_power_off();
     break;
   case SYS_EXIT:
     exit(args[0]);
@@ -112,17 +111,15 @@ int get_number_of_args(int systemCall){
 
 void * conv_virtual(void* esp)
 {
-  if (esp < (int *)0x08048000 || esp >= (int *)PHYS_BASE){
-    exit(-1);
+  // if (esp < (int *)0x08048000 || esp >= (int *)PHYS_BASE){
+  //   exit(-1);
    
-  }
-  void* ptr = pagedir_get_page(thread_current()->pagedir, esp);
-  if (ptr == NULL){
-    exit(-1);
-  }
+  // }
+  // void* ptr = pagedir_get_page(thread_current()->pagedir, esp);
+  // if (ptr == NULL){
+  //   exit(-1);
+  // }
   return esp;
-  //return ptr; !!!!!
- 
 }
 
 void exit(int status){
@@ -132,7 +129,4 @@ void exit(int status){
   release_all_locks();
   //close all files
   thread_exit();
-}
-void halt(void){
-  shutdown_power_off();
 }

@@ -408,11 +408,14 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 	t->stack = (uint8_t *)t + PGSIZE;
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
-	list_init(&t->lock_list);
+	list_init (&t->lock_list);
 
-	old_level = intr_disable();
-	list_push_back(&all_list, &t->allelem);
-	intr_set_level(old_level);
+	list_init(&t->file_descriptors);
+   t->next_fd = 2;
+
+	old_level = intr_disable ();
+	list_push_back (&all_list, &t->allelem);
+	intr_set_level (old_level);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

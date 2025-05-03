@@ -1,15 +1,17 @@
 #include "filesys/file.h"
 #include <debug.h>
 #include "filesys/inode.h"
-#include "threads/malloc.h"  
+#include "threads/malloc.h"
+// #include "threads/synch.h"
 
 /* An open file. */
-struct file 
-  {
-    struct inode *inode;        /* File's inode. */
-    off_t pos;                  /* Current position. */
-    bool deny_write;            /* Has file_deny_write() been called? */
-  };
+// struct file 
+//   {
+//     struct inode *inode;        /* File's inode. */
+//     off_t pos;                  /* Current position. */
+//     bool deny_write;            /* Has file_deny_write() been called? */
+//     struct lock file_lock;
+//   };
 
 /* Opens a file for the given INODE, of which it takes ownership,
    and returns the new file.  Returns a null pointer if an
@@ -23,6 +25,7 @@ file_open (struct inode *inode)
       file->inode = inode;
       file->pos = 0;
       file->deny_write = false;
+      lock_init(&file->file_lock);
       return file;
     }
   else

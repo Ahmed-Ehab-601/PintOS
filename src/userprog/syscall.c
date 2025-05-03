@@ -35,8 +35,8 @@ syscall_handler(struct intr_frame *f)
     /* code */
     break;
   case SYS_EXEC:
-    /* code */
-    break;
+     f->eax = exec((char *) args[0]);
+   break;
   case SYS_CREATE:
     /* code */
     break;
@@ -135,4 +135,8 @@ void exit(int status){
 }
 void halt(void){
   shutdown_power_off();
+}
+
+int  exec(char* cmd_line){
+  return process_execute(cmd_line);
 }

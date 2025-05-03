@@ -12,7 +12,6 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #ifdef USERPROG
-#include "userprog/process.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -98,6 +97,12 @@ thread_init (void)
 	init_thread (initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid ();
+	/*initize the list of child processes*/
+	///////////////////////////////////
+	list_init (&initial_thread->child_list);
+	initial_thread->parent = NULL;
+	sema_init (&initial_thread->load_sema, 0);
+	///////////////////////////////
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -587,6 +592,17 @@ allocate_tid (void)
 
 	return tid;
 }
+struct thread *get_thread_by_tid(tid_t tid) {
+	struct list_elem *e;
+	
+	for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
+	  struct thread *t = list_entry(e, struct thread, allelem);
+	  if (t->tid == tid)
+		return t;
+	}
+	
+	return NULL;
+  }
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */

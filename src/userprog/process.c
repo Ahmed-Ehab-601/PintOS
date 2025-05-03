@@ -20,18 +20,20 @@
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
 
+#define WAIT_FAIL	 -1
+
 /* Used for setup_stack */
 static void push_stack(int order, void **esp, char *token, char **argv, int argc);
 
 static thread_func start_process NO_RETURN;
 static bool load(const char *cmdline, void (**eip)(void), void **esp, char **save_ptr);
 
+
 /** Starts a new thread running a user program loaded from
 	FILENAME.
 	The new thread may be scheduled (and may even exit)
 	before process_execute() returns.
-	@return the new process's
-	thread id, or TID_ERROR if the thread cannot be created.
+	@return the new process's thread id, or TID_ERROR if the thread cannot be created.
 */
 tid_t process_execute(const char *file_name) {
 	char *fn_copy;
@@ -50,8 +52,22 @@ tid_t process_execute(const char *file_name) {
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
-	if (tid == TID_ERROR)
+	
+	if (tid != TID_ERROR) {
+		struct thread* cur = thread_current();
+		struct thread* child = get_thread_by_tid(tid);
+		
+		ASSERT(child != NULL);
+		if (child != NULL) {
+			child->parent = cur;
+			list_push_back(&cur->child_list, &child->elem);
+			ASSERT((child->is_running).value == 1);
+			sema_down(&child->is_running);
+		}
+	} else {
 		palloc_free_page(fn_copy);
+	}
+	
 	return tid;
 }
 
@@ -88,22 +104,33 @@ static void start_process(void *file_name_) {
 	NOT_REACHED();
 }
 
-/* Waits for thread TID to die and returns its exit status.  If
-   it was terminated by the kernel (i.e. killed due to an
-   exception), returns -1.  If TID is invalid or if it was not a
-   child of the calling process, or if process_wait() has already
-   been successfully called for the given TID, returns -1
-   immediately, without waiting.
+/* Waits for thread TID to die and returns its exit status.
+	If it was terminated by the kernel (i.e. killed due to an
+	exception), returns -1.  If TID is invalid or if it was not a
+	child of the calling process, or if process_wait() has already
+	been successfully called for the given TID, returns -1
+	immediately, without waiting.
 
-   This function will be implemented in problem 2-2.  For now, it
-   does nothing. */
-int
-process_wait (tid_t child_tid UNUSED) 
-{
-	// while(true) {
-	// 	thread_yield();
-	// }
-	return -1;
+	This function will be implemented in problem 2-2.  For now, it
+	does nothing. */
+int process_wait(tid_t child_tid UNUSED) {
+	struct thread* curr = thread_current();	// parent
+	struct thread* child = get_thread_by_tid(child_tid);
+
+	if(child == NULL || child->parent != curr) {
+		return WAIT_FAIL;
+	}
+
+	// let parent wait until child exits
+	sema_down(&curr->is_running);
+	
+	// wake up child 
+	sema_up(&child->is_running);
+	list_remove(&child->elem);
+
+	// when child exit -> lets its parent running
+	
+	return child->status;
 }
 
 /* Free the current process's resources. */

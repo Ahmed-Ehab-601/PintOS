@@ -5,6 +5,9 @@
 #include <list.h>
 #include <stdint.h>
 
+#include "threads/synch.h"
+
+
 /* States in a thread's life cycle. */
 enum thread_status {
 	THREAD_RUNNING, /* Running thread. */
@@ -88,26 +91,31 @@ struct thread {
 	int priority;					/* Priority. */
 	struct list_elem allelem;	/* List element for all threads list. */
 
-    /* Shared between thread.c and synch.c. */
-    struct list_elem elem;              /* List element. */
+	/* Shared between thread.c and synch.c. */
+	struct list_elem elem; /* List element. */
 
-    struct list file_descriptors;        /* List of open file descriptors. */
-    int next_fd;
+	struct list file_descriptors; /* List of open file descriptors. */
+	int next_fd;
 
-    /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                  /* Page directory. */
+	struct list child_list;          /* List of child processes. */
+	// struct list_elem child_elem;   	/* child waited */
+	struct thread* parent;           /* Parent process. */
+	struct semaphore is_running;      /* Semaphore for load status. */
+
+
+	/* Owned by userprog/process.c. */
+	uint32_t *pagedir; /* Page directory. */
 
 	struct list lock_list;
 
-    /* Owned by thread.c. */
-    unsigned magic;                     /* Detects stack overflow. */
-  };
+	/* Owned by thread.c. */
+	unsigned magic; /* Detects stack overflow. */
+};
 
-  struct file_descriptor
-{
-   struct file *file;                 /* File pointer. */
-   int fd;                            /* File descriptor. */
-   struct list_elem elem;             /* List element for file descriptor list. */
+struct file_descriptor {
+	struct file *file;	  /* File pointer. */
+	int fd;					  /* File descriptor. */
+	struct list_elem elem; /* List element for file descriptor list. */
 };
 
 /* If false (default), use round-robin scheduler.
@@ -129,6 +137,7 @@ void thread_unblock(struct thread *);
 
 struct thread *thread_current(void);
 tid_t thread_tid(void);
+struct thread* get_thread_by_tid(tid_t tid);
 const char *thread_name(void);
 
 void thread_exit(void) NO_RETURN;

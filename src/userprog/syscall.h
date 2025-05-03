@@ -6,7 +6,6 @@
  * - `pid` does not refer to a direct child of the calling process.
  * - The process that calls wait has already called wait on `pid`.
  */
-#define WAIT_FAIL	 -1
 
 void syscall_init (void);
 void* conv_virtual (void * esp);

@@ -53,7 +53,7 @@ syscall_handler(struct intr_frame *f)
     // f->eax = process_wait(args[0]);
     break;
   case SYS_EXEC:
-    /* code */
+    f->eax = exec((char *) args[0]);
     break;
   case SYS_CREATE: // what is the "eax" ?
     f->eax = create((const char *) conv_virtual(args[0]), args[1]);
@@ -297,4 +297,8 @@ int add_file(struct file *f, struct thread *t) {
   list_push_back(&t->file_descriptors, &fd->elem);
 
   return fd->fd;
+}
+
+int exec(char* cmd_line){
+  return process_execute(cmd_line);
 }

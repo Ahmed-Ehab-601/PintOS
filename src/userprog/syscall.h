@@ -12,7 +12,7 @@ void* conv_virtual (void * esp);
 int get_number_of_args(int systemCall);
 void load_args(int *args, int numberOfArgs, int * esp);
 void exit(int status);
-void halt(void);
+void handle_halt(void);
 
 // /* Projects 2 and later. */
 // void halt (void) NO_RETURN;

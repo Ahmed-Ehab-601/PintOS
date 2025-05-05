@@ -94,22 +94,22 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem; /* List element. */
 
+	/* Owned by thread.c. */
+	unsigned magic; /* Detects stack overflow. */
+	
+// #ifdef USERPROG
+	/* Owned by userprog/process.c. */
+	uint32_t *pagedir; /* Page directory. */
+	
 	struct list file_descriptors; /* List of open file descriptors. */
 	int next_fd;
+	struct list lock_list;
 
 	struct list child_list;          /* List of child processes. */
 	// struct list_elem child_elem;   	/* child waited */
 	struct thread* parent;           /* Parent process. */
 	struct semaphore is_running;      /* Semaphore for load status. */
-
-
-	/* Owned by userprog/process.c. */
-	uint32_t *pagedir; /* Page directory. */
-
-	struct list lock_list;
-
-	/* Owned by thread.c. */
-	unsigned magic; /* Detects stack overflow. */
+// #endif
 };
 
 struct file_descriptor {
@@ -137,7 +137,7 @@ void thread_unblock(struct thread *);
 
 struct thread *thread_current(void);
 tid_t thread_tid(void);
-struct thread* get_thread_by_tid(tid_t tid);
+struct thread* thread_get_by_tid(tid_t tid);
 const char *thread_name(void);
 
 void thread_exit(void) NO_RETURN;

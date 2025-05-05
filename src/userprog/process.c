@@ -55,7 +55,7 @@ tid_t process_execute(const char *file_name) {
 	
 	if (tid != TID_ERROR) {
 		struct thread* cur = thread_current();
-		struct thread* child = get_thread_by_tid(tid);
+		struct thread* child = thread_get_by_tid(tid);
 		
 		ASSERT(child != NULL);
 		if (child != NULL) {
@@ -115,7 +115,7 @@ static void start_process(void *file_name_) {
 	does nothing. */
 int process_wait(tid_t child_tid UNUSED) {
 	struct thread* curr = thread_current();	// parent
-	struct thread* child = get_thread_by_tid(child_tid);
+	struct thread* child = thread_get_by_tid(child_tid);
 
 	if(child == NULL || child->parent != curr) {
 		return WAIT_FAIL;
@@ -127,6 +127,7 @@ int process_wait(tid_t child_tid UNUSED) {
 	// wake up child 
 	sema_up(&child->is_running);
 	list_remove(&child->elem);
+	// while (curr->status == THREAD_BLOCKED) thread_unblock(curr);
 
 	// when child exit -> lets its parent running
 	

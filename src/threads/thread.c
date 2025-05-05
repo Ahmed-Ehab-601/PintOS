@@ -336,13 +336,14 @@ int thread_get_recent_cpu(void) {
 	return 0;
 }
 
-struct thread* get_thread_by_tid(tid_t tid) {
+struct thread* thread_get_by_tid(tid_t tid) {
 	struct list_elem *e;
+	struct thread *ret;
 
 	for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
-		struct thread *t = list_entry(e, struct thread, allelem);
-		if (t->tid == tid)
-			return t;
+		ret = list_entry(e, struct thread, allelem);
+		if (ret->tid == tid)
+			return ret;
 	}
 
 	return NULL;
@@ -421,18 +422,29 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 	t->stack = (uint8_t *)t + PGSIZE;
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
-	list_init (&t->lock_list);
-
-	list_init(&t->file_descriptors);
-   t->next_fd = 2;
-
+	
 	old_level = intr_disable ();
 	list_push_back (&all_list, &t->allelem);
 	intr_set_level (old_level);
-
+	
+// #ifdef USERPROG
+	/**
+	 * ### Initialize thread semaphore by 0
+	 * as child thread on start should be blocked
+	 * until its parent invoked wait(pid_t child_pid)
+	 */
+	sema_init(&t->is_running, 0);
 	/* initialize the list of child processes */
-	list_init (&t->child_list);
-	sema_init (&t->is_running, 1);
+	list_init(&t->child_list);
+	
+	list_init(&t->file_descriptors);
+	list_init(&t->lock_list);
+   t->next_fd = 2;
+	if (thread_current() != initial_thread)
+		list_push_back(&thread_current()->child_list, &t->elem);
+	
+	t->parent = thread_current();
+// #endif
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

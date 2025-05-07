@@ -17,8 +17,11 @@ pintos -p file -a newname -- -q .
 pintos-mkdisk filesys.dsk --filesys-size=2
 pintos -f -q
 test=halt
-pintos -p ../../examples/$test -a $test -- -q
-pintos -q run $test
+pintos --qemu --filesys-size=2 -p build/tests/userprog/$test -a $test -- -f run $test
+
+# test=halt
+# pintos -p ../../examples/$test -a $test -- -q
+# pintos -q run $test
 
 # The three final steps can actually be combined into a single command:
 pintos-mkdisk filesys.dsk--filesys-size=2

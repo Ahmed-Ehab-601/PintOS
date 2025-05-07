@@ -53,20 +53,20 @@ tid_t process_execute(const char *file_name) {
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
 	
-	if (tid != TID_ERROR) {
-		struct thread* cur = thread_current();
-		struct thread* child = thread_get_by_tid(tid);
+	// if (tid != TID_ERROR) {
+	// 	struct thread* cur = thread_current();
+	// 	struct thread* child = thread_get_by_tid(tid);
 		
-		ASSERT(child != NULL);
-		if (child != NULL) {
-			child->parent = cur;
-			list_push_back(&cur->child_list, &child->elem);
-			ASSERT((child->is_running).value == 1);
-			sema_down(&child->is_running);
-		}
-	} else {
-		palloc_free_page(fn_copy);
-	}
+	// 	ASSERT(child != NULL);
+	// 	if (child != NULL) {
+	// 		child->parent = cur;
+	// 		list_push_back(&cur->child_list, &child->elem);
+	// 		ASSERT((child->is_running).value == 1);
+	// 		sema_down(&child->is_running);
+	// 	}
+	// } else {
+	// 	palloc_free_page(fn_copy);
+	// }
 	
 	return tid;
 }
@@ -114,24 +114,25 @@ static void start_process(void *file_name_) {
 	This function will be implemented in problem 2-2.  For now, it
 	does nothing. */
 int process_wait(tid_t child_tid UNUSED) {
-	struct thread* curr = thread_current();	// parent
-	struct thread* child = thread_get_by_tid(child_tid);
+	// struct thread* curr = thread_current();	// parent
+	// struct thread* child = thread_get_by_tid(child_tid);
 
-	if(child == NULL || child->parent != curr) {
-		return WAIT_FAIL;
-	}
+	// if(child == NULL || child->parent != curr) {
+	// 	return WAIT_FAIL;
+	// }
 
-	// let parent wait until child exits
-	sema_down(&curr->is_running);
+	// // let parent wait until child exits
+	// sema_down(&curr->is_running);
 	
-	// wake up child 
-	sema_up(&child->is_running);
-	list_remove(&child->elem);
+	// // wake up child 
+	// sema_up(&child->is_running);
+	// list_remove(&child->elem);
 	// while (curr->status == THREAD_BLOCKED) thread_unblock(curr);
 
-	// when child exit -> lets its parent running
+	// // when child exit -> lets its parent running
 	
-	return child->status;
+	// return child->status;
+	// return -1;
 }
 
 /* Free the current process's resources. */

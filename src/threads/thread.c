@@ -15,6 +15,7 @@
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "userprog/filesyscall.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -91,6 +92,12 @@ void thread_init(void) {
 	lock_init(&tid_lock);
 	list_init(&ready_list);
 	list_init(&all_list);
+
+	#ifdef USERPROG
+	lock_init(&filesys_lock);
+	lock_init(&std_input_lock);
+	lock_init(&std_output_lock);
+	#endif
 
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread();

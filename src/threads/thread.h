@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "threads/synch.h"
-
+#include "userprog/syscall.h"
 
 /* States in a thread's life cycle. */
 enum thread_status {
@@ -114,11 +114,6 @@ struct thread {
 // #endif
 };
 
-struct file_descriptor {
-	struct file *file;	  /* File pointer. */
-	int fd;					  /* File descriptor. */
-	struct list_elem elem; /* List element for file descriptor list. */
-};
 
 /* If false (default), use round-robin scheduler.
 	If true, use multi-level feedback queue scheduler.

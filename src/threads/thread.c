@@ -199,6 +199,10 @@ tid_t thread_create(const char *name, int priority, thread_func *function, void 
 	/* Add to run queue. */
 	thread_unblock(t);
 
+	if (thread_current() != initial_thread)
+		list_push_back (&thread_current()->child_list, &t->child_elem);
+ 	t->parent = thread_current();
+
 	return tid;
 }
 
@@ -259,7 +263,7 @@ struct thread *thread_current(void) {
 /* Returns the running thread's tid. */
 tid_t thread_tid(void) { return thread_current()->tid; }
 
-/* Deschedules the current thread and destroys it.  Never
+/* Deschedules the current thread and destroys it. Never
 	returns to the caller. */
 void thread_exit(void) {
 	ASSERT(!intr_context());
@@ -431,17 +435,25 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 	 * as child thread on start should be blocked
 	 * until its parent invoked wait(pid_t child_pid)
 	 */
-	// sema_init(&t->is_running, 0);
+	sema_init(&t->is_running, 0);
+	t->child_loaded = false;
 	/* initialize the list of child processes */
-	// list_init(&t->child_list);
+	list_init(&t->child_list);
+	t->child_exit_status = -2;
 	
 	list_init(&t->file_descriptors);
 	list_init(&t->lock_list);
-   t->next_fd = 2;
-	// if (thread_current() != initial_thread)
+	t->next_fd = 2;
+
+	// if (thread_current() != initial_thread) {
 	// 	list_push_back(&thread_current()->child_list, &t->elem);
+	// }
+	// if(t != initial_thread) {
+	// 	t->parent = thread_current();
+	// } else {
+	// 	t->parent = NULL;
+	// }
 	
-	// t->parent = thread_current();
 // #endif
 }
 

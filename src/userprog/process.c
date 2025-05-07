@@ -52,21 +52,13 @@ tid_t process_execute(const char *file_name) {
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
-	
-	// if (tid != TID_ERROR) {
-	// 	struct thread* cur = thread_current();
-	// 	struct thread* child = thread_get_by_tid(tid);
-		
-	// 	ASSERT(child != NULL);
-	// 	if (child != NULL) {
-	// 		child->parent = cur;
-	// 		list_push_back(&cur->child_list, &child->elem);
-	// 		ASSERT((child->is_running).value == 1);
-	// 		sema_down(&child->is_running);
-	// 	}
-	// } else {
-	// 	palloc_free_page(fn_copy);
-	// }
+
+	struct thread* cur = thread_current();
+	sema_down(&cur->is_running);
+	if (tid == TID_ERROR || !cur->child_loaded) {
+		tid = TID_ERROR;
+		palloc_free_page(fn_copy);
+	}
 	
 	return tid;
 }
@@ -89,14 +81,26 @@ static void start_process(void *file_name_) {
 	if_.eflags = FLAG_IF | FLAG_MBS;
 	success = load(file_name, &if_.eip, &if_.esp, &save_ptr);
 
-	/* If load failed, quit. */
 	palloc_free_page(file_name);
-	if (!success)
+	
+	struct thread* child = thread_current();
+	struct thread* parent = child->parent;		// parent
+
+	/* If load failed, quit. */
+	if (!success) {
+		parent->child_loaded = false;
+		sema_up(&parent->is_running);
 		thread_exit();
+	} else {
+		sema_up(&parent->is_running);
+		parent->child_loaded = true;
+		sema_down(&child->is_running);
+		list_push_back(&parent->child_list, &child->child_elem);
+	}
 
 	/* Start the user process by simulating a return from an
 	  interrupt, implemented by intr_exit (in
-	  threads/intr-stubs.S).  Because intr_exit takes all of its
+	  threads/intr-stubs.S). Because intr_exit takes all of its
 	  arguments on the stack in the form of a `struct intr_frame',
 	  we just point the stack pointer (%esp) to our stack frame
 	  and jump to it. */
@@ -114,24 +118,26 @@ static void start_process(void *file_name_) {
 	This function will be implemented in problem 2-2.  For now, it
 	does nothing. */
 int process_wait(tid_t child_tid UNUSED) {
-	// struct thread* curr = thread_current();	// parent
-	// struct thread* child = thread_get_by_tid(child_tid);
+	struct thread* curr = thread_current();	// parent
+	struct thread* child = thread_get_by_tid(child_tid);
 
-	// if(child == NULL || child->parent != curr) {
-	// 	return WAIT_FAIL;
-	// }
+	if(child == NULL || child->parent != curr || child->status == THREAD_DYING) {
+		return WAIT_FAIL;
+	}
 
-	// // let parent wait until child exits
-	// sema_down(&curr->is_running);
-	
-	// // wake up child 
-	// sema_up(&child->is_running);
-	// list_remove(&child->elem);
+	// wake up child 
+	sema_up(&child->is_running);
+
+	// let parent wait until child exits
+	sema_down(&curr->is_running);
+
+	enum intr_level old_level = intr_disable();
+	list_remove(&child->child_elem);
+	intr_set_level (old_level);
 	// while (curr->status == THREAD_BLOCKED) thread_unblock(curr);
-
-	// // when child exit -> lets its parent running
+	// when child exit -> lets its parent running
 	
-	// return child->status;
+	return curr->child_exit_status;
 	// return -1;
 }
 

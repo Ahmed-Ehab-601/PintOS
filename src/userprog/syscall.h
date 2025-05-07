@@ -17,8 +17,8 @@ void handle_halt(void);
 // /* Projects 2 and later. */
 // void halt (void) NO_RETURN;
 // void exit (int status) NO_RETURN;
-// pid_t exec (const char *file);
-// int wait (pid_t);
+// int exec (const char *file);
+// int wait (tid_t child);
 // bool create (const char *file, unsigned initial_size);
 // bool remove (const char *file);
 // int open (const char *file);

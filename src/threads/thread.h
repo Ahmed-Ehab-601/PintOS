@@ -106,9 +106,11 @@ struct thread {
 	struct list lock_list;
 
 	struct list child_list;          /* List of child processes. */
-	// struct list_elem child_elem;   	/* child waited */
+	struct list_elem child_elem;  	/* child waited */
+	int child_exit_status;				/* exit status of child, should be returned in wait syscall */
 	struct thread* parent;           /* Parent process. */
-	struct semaphore is_running;      /* Semaphore for load status. */
+	bool child_loaded;					/* tell if the child is loaded sucessfully */
+	struct semaphore is_running;     /* Semaphore for load status. */
 // #endif
 };
 

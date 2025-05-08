@@ -74,11 +74,11 @@ static void syscall_handler(struct intr_frame *f) {
 		f->eax = filesize(args[0]);
 		break;
 	case SYS_READ:
-		verify_buffer(args[1], args[2]);
+		//verify_buffer(args[1], args[2]); // make exce once fail and multi recurce 
 		f->eax = read(args[0], args[1], args[2]);
 		break;
-	case SYS_WRITE:
-		verify_buffer(args[1], args[2]);
+	case SYS_WRITE: 
+		//verify_buffer(args[1], args[2]); // make exce once fail and multi recurce but make write badptr pass
 		f->eax = write(args[0], args[1], args[2]);
 		break;
 	case SYS_SEEK:

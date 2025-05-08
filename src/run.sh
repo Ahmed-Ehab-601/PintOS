@@ -16,7 +16,7 @@ pintos -p file -a newname -- -q .
 # built the examples in examples and that the current directory is userprog/build :
 pintos-mkdisk filesys.dsk --filesys-size=2
 pintos -f -q
-test=halt
+test=exec-once
 pintos --qemu --filesys-size=2 -p build/tests/userprog/$test -a $test -- -f run $test
 
 # test=halt

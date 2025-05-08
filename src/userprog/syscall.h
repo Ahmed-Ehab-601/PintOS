@@ -9,6 +9,8 @@
 
 void syscall_init (void);
 void* conv_virtual (void * esp);
+void verify_str (const void* str);
+static void verify_buffer (void* buffer, unsigned size);
 int get_number_of_args(int systemCall);
 void load_args(int *args, int numberOfArgs, int * esp);
 void exit(int status);

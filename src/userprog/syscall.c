@@ -484,6 +484,15 @@ int file_add_to_thread(struct file *file, struct thread *thread)
 int wait(tid_t e) { return process_wait(e); }
 
 tid_t exec(const char *cmd_line) {
-	return process_execute(cmd_line);
+	int ret;
+	
+	if (!cmd_line || !is_user_vaddr (cmd_line)) /* bad ptr */
+	  return -1;
+	  
+	lock_acquire(&filesys_lock);
+	ret = process_execute (cmd_line);
+	lock_release(&filesys_lock);
+	return ret;
+	// return process_execute(cmd_line);
 }
 

@@ -13,7 +13,6 @@
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
-// #include "userprog/filesyscall.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/thread.h"
@@ -30,8 +29,15 @@ tid_t exec(const char *cmd_line);
 int wait(tid_t e);
 
 
-void syscall_init(void) { intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall"); }
+void syscall_init(void) {
+	intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall"); 
 
+	lock_init(&filesys_lock);
+	lock_init(&std_input_lock);
+	lock_init(&std_output_lock);
+	lock_init(&exec_lock);
+	
+}
 static void syscall_handler(struct intr_frame *f) {
 	int args[3];
 	void * esp = conv_virtual(f->esp);
@@ -255,21 +261,15 @@ int open(const char *file_name)
 {
     if (file_name == NULL) return INVALID_FILE;
 
-    lock_acquire(&filesys_lock);
+	//lock_acquire(&filesys_lock);
     struct file *file = filesys_open(file_name);
-    lock_release(&filesys_lock);
+	//lock_release(&filesys_lock);
 
     if (file == NULL) return INVALID_FILE;
 
+	// lock_acquire(&filesys_lock);
     int fd = file_add_to_thread(file, thread_current());
-
-    if(fd == INVALID_FD)
-    {
-        lock_acquire(&filesys_lock);
-        file_close(file);
-        lock_release(&filesys_lock);
-    }
-
+	// lock_release(&filesys_lock);
     return fd;
 }
 
@@ -286,9 +286,9 @@ int filesize (int fd_num)
     struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
     if (fd == NULL) return -1;
     
-    lock_acquire(&fd->file->file_lock);
+    lock_acquire(&filesys_lock);
     int size = file_length(fd->file);
-    lock_release(&fd->file->file_lock);
+    lock_release(&filesys_lock);
 
     return size;
 }
@@ -323,9 +323,9 @@ int read(int fd_num, void *buffer, unsigned size)
     struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
     if (fd == NULL) return -1;
 
-    lock_acquire(&fd->file->file_lock);
+    lock_acquire(&filesys_lock);
     int bytes_read = file_read(fd->file, buffer, size);
-    lock_release(&fd->file->file_lock);
+    lock_release(&filesys_lock);
 
     return bytes_read;
 }
@@ -366,9 +366,10 @@ int write(int fd_num, const void *buffer, unsigned size)
     struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
     if (fd == NULL) return -1;
 
-    lock_acquire(&fd->file->file_lock);
+
+    lock_acquire(&filesys_lock);
     int bytes_written = file_write(fd->file, buffer, size);
-    lock_release(&fd->file->file_lock);
+    lock_release(&filesys_lock);
 
     return bytes_written;
 }
@@ -395,9 +396,9 @@ void seek(int fd_num, unsigned position)
     struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
     if (fd == NULL) return;
 
-    lock_acquire(&fd->file->file_lock);
+    lock_acquire(&filesys_lock);
     file_seek(fd->file, position);
-    lock_release(&fd->file->file_lock);
+    lock_release(&filesys_lock);
 }
 
 /**
@@ -410,9 +411,9 @@ unsigned tell(int fd_num)
     struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
     if (fd == NULL) return -1;
 
-    lock_acquire(&fd->file->file_lock);
+    lock_acquire(&filesys_lock);
     unsigned position = file_tell(fd->file);
-    lock_release(&fd->file->file_lock);
+    lock_release(&filesys_lock);
 
     return position;
 }
@@ -428,9 +429,9 @@ void close(int fd_num)
     struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
     if (fd == NULL) return;
 
-    lock_acquire(&fd->file->file_lock);
+    lock_acquire(&filesys_lock);
     file_close(fd->file);
-    lock_release(&fd->file->file_lock);
+    lock_release(&filesys_lock);
 
     list_remove(&fd->elem);
     free(fd);
@@ -473,11 +474,15 @@ int file_add_to_thread(struct file *file, struct thread *thread)
     struct file_descriptor *fd = malloc(sizeof(struct file_descriptor));
     if (fd == NULL) return INVALID_FD;
 
-    lock_acquire(&filesys_lock);
+
     fd->file = file;
-    fd->fd = thread->next_fd++;
+    fd->fd = thread->next_fd;
+
+	lock_acquire(&filesys_lock);
+	thread->next_fd++;
     list_push_back(&thread->file_descriptors, &fd->elem);
     lock_release(&filesys_lock);
+  
 
     return fd->fd;
 }
@@ -489,9 +494,9 @@ tid_t exec(const char *cmd_line) {
 	if (!cmd_line || !is_user_vaddr (cmd_line)) /* bad ptr */
 	  return -1;
 	  
-	lock_acquire(&filesys_lock);
+	lock_acquire(&exec_lock);
 	ret = process_execute (cmd_line);
-	lock_release(&filesys_lock);
+	lock_release(&exec_lock);
 	return ret;
 	// return process_execute(cmd_line);
 }

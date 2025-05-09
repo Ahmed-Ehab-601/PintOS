@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include "kernel/list.h"
-struct lock filesys_lock, std_input_lock, std_output_lock;
+struct lock filesys_lock, std_input_lock, std_output_lock, exec_lock;
 
 #define INVALID_FD -1
 #define EXIT_FAILURE -1

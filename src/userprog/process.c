@@ -39,27 +39,38 @@ tid_t process_execute(const char *file_name) {
 	char *fn_copy;
 	tid_t tid;
 
-	/* Make a copy of FILE_NAME.
-	  Otherwise there's a race between the caller and load(). */
+	/* Make a copy of FILE_NAME for the child to parse arguments. */
 	fn_copy = palloc_get_page(0);
 	if (fn_copy == NULL)
 		return TID_ERROR;
 	strlcpy(fn_copy, file_name, PGSIZE);
 
-	/* Parsed file name */
+	/* Create a second temporary copy to extract the executable name. */
+	char *temp = malloc(strlen(file_name) + 1);
+	if (temp == NULL) {
+		palloc_free_page(fn_copy);
+		return TID_ERROR;
+	}
+	strlcpy(temp, file_name, PGSIZE);
 	char *save_ptr;
-	file_name = strtok_r((char *)file_name, " ", &save_ptr);
+	char *exec_name = strtok_r(temp, " ", &save_ptr);
 
-	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create(file_name, PRI_DEFAULT, start_process, fn_copy);
+	/* Create a new thread to execute EXEC_NAME. */
+	tid = thread_create(exec_name, PRI_DEFAULT, start_process, fn_copy);
+
+	if(tid == TID_ERROR) {
+		palloc_free_page(fn_copy);
+		return TID_ERROR;
+	}
 
 	struct thread* cur = thread_current();
 	sema_down(&cur->is_running);
-	if (tid == TID_ERROR || !cur->child_loaded) {
-		tid = TID_ERROR;
-		palloc_free_page(fn_copy);
+
+	/* If thread creation failed or loading failed in child. */
+	if (!cur->child_loaded) {
+		return TID_ERROR;
 	}
-	
+
 	return tid;
 }
 

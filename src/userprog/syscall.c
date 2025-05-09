@@ -27,7 +27,7 @@ unsigned tell(int fd_num);
 void close(int fd_num);
 
 tid_t exec(const char *cmd_line);
-int wait(tid_t child);
+int wait(tid_t e);
 
 struct file_descriptor *get_file_descriptor(int fd_num, struct thread *t);
 int add_file(struct file *f, struct thread *t);
@@ -110,8 +110,8 @@ static void verify_buffer (void* buffer, unsigned size){
 	int i = 0;
 	char* temp = (char*) buffer;
 	while( i < size){
-	conv_virtual((const void*) temp++);
-	i++;
+		conv_virtual((const void*) temp++);
+		i++;
 	}
 }
 
@@ -150,7 +150,10 @@ int get_number_of_args(int systemCall) {
 }
 
 void *conv_virtual(void *esp) {
-	if (!is_user_vaddr(esp)) {
+	if(esp == NULL){
+		exit(-1);
+	}
+	if (esp < (void *)0x08048000 || esp >= (void *)PHYS_BASE) {
 		exit(-1);
 	}
 	void *ptr = pagedir_get_page(thread_current()->pagedir, esp);
@@ -163,7 +166,7 @@ void *conv_virtual(void *esp) {
 }
 
 void exit(int status) {
-	// if it's child prosses handle waited parent here !!
+	// if it's e prosses handle waited parent here !!
 	struct thread *cur = thread_current();
 	printf("%s: exit(%d)\n", cur->name, status);
 	release_all_locks();
@@ -175,6 +178,11 @@ void exit(int status) {
 	 * that are waiting (blocked) for parent
 	 * 
 	 */
+	// for (struct list_elem *e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
+	// 	struct thread *child = list_entry(e, struct thread, allelem);
+	// 	if(child->status != THREAD_DYING)
+	// 		sema_up(&child->is_running);
+	// }
 	thread_exit();
 }
 
@@ -337,4 +345,4 @@ tid_t exec(const char *cmd_line) {
 	return process_execute(cmd_line);
 }
 
-int wait(tid_t child) { return process_wait(child); }
+int wait(tid_t e) { return process_wait(e); }

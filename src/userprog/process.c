@@ -105,8 +105,8 @@ static void start_process(void *file_name_) {
 	} else {
 		sema_up(&parent->is_running);
 		parent->child_loaded = true;
-		sema_down(&child->is_running);
 		list_push_back(&parent->child_list, &child->child_elem);
+		sema_down(&child->is_running);
 	}
 
 	/* Start the user process by simulating a return from an

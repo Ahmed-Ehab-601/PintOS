@@ -78,11 +78,11 @@ static void syscall_handler(struct intr_frame *f) {
 		f->eax = filesize(args[0]);
 		break;
 	case SYS_READ:
-		//verify_buffer(args[1], args[2]); // make exce once fail and multi recurce 
+		verify_buffer(args[1], args[2]); // make exce once fail and multi recurce 
 		f->eax = read(args[0], args[1], args[2]);
 		break;
 	case SYS_WRITE: 
-		//verify_buffer(args[1], args[2]); // make exce once fail and multi recurce but make write badptr pass
+		verify_buffer(args[1], args[2]); // make exce once fail and multi recurce but make write badptr pass
 		f->eax = write(args[0], args[1], args[2]);
 		break;
 	case SYS_SEEK:
@@ -491,13 +491,9 @@ int wait(tid_t e) { return process_wait(e); }
 tid_t exec(const char *cmd_line) {
 	int ret;
 	
-	if (!cmd_line || !is_user_vaddr (cmd_line)) /* bad ptr */
-	  return -1;
-	  
 	lock_acquire(&exec_lock);
 	ret = process_execute (cmd_line);
 	lock_release(&exec_lock);
 	return ret;
-	// return process_execute(cmd_line);
 }
 

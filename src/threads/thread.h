@@ -93,11 +93,8 @@ struct thread {
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem; /* List element. */
-
-	/* Owned by thread.c. */
-	unsigned magic; /* Detects stack overflow. */
 	
-// #ifdef USERPROG
+	// #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint32_t *pagedir; /* Page directory. */
 	
@@ -112,6 +109,13 @@ struct thread {
 	bool child_loaded;					/* tell if the child is loaded sucessfully */
 	struct semaphore is_running;     /* Semaphore for load status. */
 // #endif
+
+
+
+	/* Owned by thread.c. */
+	unsigned magic; /* Detects stack overflow. */
+	
+
 };
 
 

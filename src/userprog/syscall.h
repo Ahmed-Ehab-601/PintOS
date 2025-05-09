@@ -32,21 +32,6 @@ void load_args(int *args, int numberOfArgs, int * esp);
 void exit(int status);
 void handle_halt(void);
 
-/* Projects 2 and later. */
-// void halt (void);
-// void exit (int status);
-// int exec (const char *file);
-// int wait (tid_t child);
-// bool create (const char *file, unsigned initial_size);
-// bool remove (const char *file);
-// int open (const char *file);
-// int filesize (int fd);
-// int read (int fd, void *buffer, unsigned length);
-// int write (int fd, const void *buffer, unsigned length);
-// void seek (int fd, unsigned position);
-// unsigned tell (int fd);
-// void close (int fd);
-
 bool create (const char *file_name, unsigned initial_size);
 bool remove (const char *file_name);
 int open (const char *file_name);
@@ -56,5 +41,6 @@ int write (int fd_num, const void *buffer, unsigned size);
 void seek (int fd_num, unsigned position);
 unsigned tell (int fd_num);
 void close (int fd_num);
+
 
 #endif /* userprog/syscall.h */

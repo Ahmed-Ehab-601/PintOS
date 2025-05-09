@@ -27,13 +27,18 @@ void close(int fd_num);
 
 static void syscall_handler(struct intr_frame *);
 tid_t exec(const char *cmd_line);
-int wait(tid_t child);
+int wait(tid_t e);
+
+
 void syscall_init(void) { intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall"); }
 
 static void syscall_handler(struct intr_frame *f) {
 	int args[3];
-	void *esp = conv_virtual(f->esp);
+	void * esp = conv_virtual(f->esp);
 	int systemCall = *(int *)esp;
+	if (systemCall < SYS_HALT || systemCall > SYS_INUMBER){
+		exit(-1);
+	}
 	int numberOfArgs = get_number_of_args(systemCall);
 	load_args(args, numberOfArgs, (int *)f->esp);
 
@@ -48,29 +53,30 @@ static void syscall_handler(struct intr_frame *f) {
 		f->eax = wait(args[0]);
 		break;
 	case SYS_EXEC:
+		verify_str(args[0]);
 		f->eax = exec(args[0]);
 		break;
 	case SYS_CREATE:	// what is the "eax" ?
-		conv_virtual(args[0]);
+		verify_str(args[0]);
 		f->eax = create(args[0], args[1]);
 		break;
 	case SYS_REMOVE:
-		conv_virtual(args[0]);
+		verify_str(args[0]);
 		f->eax = remove(args[0]);
 		break;
 	case SYS_OPEN:
-		// printf("%s", args[0]);
-		conv_virtual(args[0]);
+		verify_str(args[0]);
 		f->eax = open(args[0]);
 		break;
 	case SYS_FILESIZE:
 		f->eax = filesize(args[0]);
 		break;
 	case SYS_READ:
-		// printf("-------- %ud -------------\n", args[2]);
+		//verify_buffer(args[1], args[2]); // make exce once fail and multi recurce 
 		f->eax = read(args[0], args[1], args[2]);
 		break;
-	case SYS_WRITE:
+	case SYS_WRITE: 
+		//verify_buffer(args[1], args[2]); // make exce once fail and multi recurce but make write badptr pass
 		f->eax = write(args[0], args[1], args[2]);
 		break;
 	case SYS_SEEK:
@@ -90,6 +96,20 @@ static void syscall_handler(struct intr_frame *f) {
 void load_args(int *args, int numberOfArgs, int *esp) {
 	for (int i = 0; i < numberOfArgs; i++) {
 		args[i] = *(int *)conv_virtual(esp + (i + 1));
+	}
+}
+
+ void verify_str (const void* str){
+	char* toCheck = *(char*) conv_virtual (str);
+	for ( toCheck; toCheck != 0; toCheck = *(char*) conv_virtual(++str)) ;
+}
+
+static void verify_buffer (void* buffer, unsigned size){
+	int i = 0;
+	char* temp = (char*) buffer;
+	while( i < size){
+		conv_virtual((const void*) temp++);
+		i++;
 	}
 }
 
@@ -128,8 +148,10 @@ int get_number_of_args(int systemCall) {
 }
 
 void *conv_virtual(void *esp) {
+	if(esp == NULL){
+		exit(-1);
+	}
 	if (esp < (void *)0x08048000 || esp >= (void *)PHYS_BASE) {
-		printf("in if in conv");
 		exit(-1);
 	}
 	void *ptr = pagedir_get_page(thread_current()->pagedir, esp);
@@ -137,8 +159,8 @@ void *conv_virtual(void *esp) {
 		exit(-1);
 	}
 
-	return esp;
-	// return ptr;
+	//return esp;
+	return ptr;
 }
 /**
  * Closes all open file descriptors associated with the given thread `t`.
@@ -162,7 +184,7 @@ void *conv_virtual(void *esp) {
 // }
 
 void exit(int status) {
-	// if it's child prosses handle waited parent here !!
+	// if it's e prosses handle waited parent here !!
 	struct thread *cur = thread_current();
 	printf("%s: exit(%d)\n", cur->name, status);
 	release_all_locks();
@@ -181,19 +203,17 @@ void exit(int status) {
         e = list_next(e);
         close (fd->fd);
     }
+	// for (struct list_elem *e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
+	// 	struct thread *child = list_entry(e, struct thread, allelem);
+	// 	if(child->status != THREAD_DYING)
+	// 		sema_up(&child->is_running);
+	// }
 	thread_exit();
 }
 
 void handle_halt(void) { 
 	shutdown_power_off();
 }
-
-tid_t exec(const char *cmd_line) {
-	return process_execute(cmd_line);
-}
-
-int wait(tid_t child) { return process_wait(child); }
-
 
 /**
  * Creates a new file with the given name and initial size.
@@ -461,3 +481,9 @@ int file_add_to_thread(struct file *file, struct thread *thread)
 
     return fd->fd;
 }
+int wait(tid_t e) { return process_wait(e); }
+
+tid_t exec(const char *cmd_line) {
+	return process_execute(cmd_line);
+}
+

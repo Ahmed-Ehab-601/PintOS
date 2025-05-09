@@ -1,19 +1,19 @@
 /* Recursively executes itself until the child fails to execute.
-   We expect that at least 30 copies can run.
+  We expect that at least 30 copies can run.
 
-   We count how many children your kernel was able to execute
-   before it fails to start a new process.  We require that,
-   if a process doesn't actually get to start, exec() must
-   return -1, not a valid PID.
+  We count how many children your kernel was able to execute
+  before it fails to start a new process.  We require that,
+  if a process doesn't actually get to start, exec() must
+  return -1, not a valid PID.
 
-   We repeat this process 10 times, checking that your kernel
-   allows for the same level of depth every time.
+  We repeat this process 10 times, checking that your kernel
+  allows for the same level of depth every time.
 
-   In addition, some processes will spawn children that terminate
-   abnormally after allocating some resources.
+  In addition, some processes will spawn children that terminate
+  abnormally after allocating some resources.
 
-   Written by Godmar Back <godmar@gmail.com>
- */
+  Written by Godmar Back <godmar@gmail.com>
+*/
 
 #include <debug.h>
 #include <stdio.h>

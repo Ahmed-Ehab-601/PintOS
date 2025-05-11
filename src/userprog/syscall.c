@@ -160,13 +160,13 @@ void *conv_virtual(void *esp) {
 	if (esp < (void *)0x08048000 || esp >= (void *)PHYS_BASE) {
 		exit(-1);
 	}
-	void *ptr = pagedir_get_page(thread_current()->pagedir, esp);
-	if (ptr == NULL) {
-		exit(-1);
-	}
+	// void *ptr = pagedir_get_page(thread_current()->pagedir, esp);
+	// if (ptr == NULL) {
+	// 	exit(-1);
+	// }
 
-	//return esp;
-	return ptr;
+	return esp;
+	//return ptr;
 }
 /**
  * Closes all open file descriptors associated with the given thread `t`.

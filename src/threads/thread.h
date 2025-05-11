@@ -102,6 +102,8 @@ struct thread {
 	int next_fd;
 	struct list lock_list;
 
+	struct file *executable;
+
 	struct list child_list;          /* List of child processes. */
 	struct list_elem child_elem;  	/* child waited */
 	int child_exit_status;				/* exit status of child, should be returned in wait syscall */

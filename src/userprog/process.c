@@ -103,9 +103,9 @@ static void start_process(void *file_name_) {
 		sema_up(&parent->is_running);
 		thread_exit();
 	} else {
-		sema_up(&parent->is_running);
 		parent->child_loaded = true;
-		list_push_back(&parent->child_list, &child->child_elem);
+		sema_up(&parent->is_running);
+		// list_push_back(&parent->child_list, &child->child_elem);
 		sema_down(&child->is_running);
 	}
 
@@ -142,9 +142,9 @@ int process_wait(tid_t child_tid UNUSED) {
 	// let parent wait until child exits
 	sema_down(&curr->is_running);
 
-	enum intr_level old_level = intr_disable();
-	list_remove(&child->child_elem);
-	intr_set_level (old_level);
+	// enum intr_level old_level = intr_disable();
+	// list_remove(&child->child_elem);
+	// intr_set_level (old_level);
 	// while (curr->status == THREAD_BLOCKED) thread_unblock(curr);
 	// when child exit -> lets its parent running
 	
@@ -157,31 +157,31 @@ void process_exit(void) {
 	struct thread *cur = thread_current();
 	uint32_t *pd;
 
-	 if (cur->executable != NULL)
-  {
-    /* Only allow writes if they were denied */
-    if (cur->executable->deny_write)
-      file_allow_write(cur->executable);
-    
-    file_close(cur->executable);
-    cur->executable = NULL;
-  }
-
+	if (cur->executable != NULL) {
+		/* Only allow writes if they were denied */
+		if (cur->executable->deny_write)
+		file_allow_write(cur->executable);
+		
+		file_close(cur->executable);
+		cur->executable = NULL;
+	}
+	
 	/* Destroy the current process's page directory and switch back
-	  to the kernel-only page directory. */
+	to the kernel-only page directory. */
 	pd = cur->pagedir;
 	if (pd != NULL) {
 		/* Correct ordering here is crucial.  We must set
-			cur->pagedir to NULL before switching page directories,
-			so that a timer interrupt can't switch back to the
-			process page directory.  We must activate the base page
-			directory before destroying the process's page
-			directory, or our active page directory will be one
-			that's been freed (and cleared). */
+		cur->pagedir to NULL before switching page directories,
+		so that a timer interrupt can't switch back to the
+		process page directory.  We must activate the base page
+		directory before destroying the process's page
+		directory, or our active page directory will be one
+		that's been freed (and cleared). */
 		cur->pagedir = NULL;
 		pagedir_activate(NULL);
 		pagedir_destroy(pd);
 	}
+	
 }
 
 /* Sets up the CPU for running user code in the current

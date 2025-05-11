@@ -94,7 +94,7 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem; /* List element. */
 	
-	// #ifdef USERPROG
+// #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint32_t *pagedir; /* Page directory. */
 	
@@ -104,15 +104,13 @@ struct thread {
 
 	struct file *executable;
 
-	struct list child_list;          /* List of child processes. */
-	struct list_elem child_elem;  	/* child waited */
+	// struct list child_list;          /* List of child processes. */
+	// struct list_elem child_elem;  	/* child waited */
 	int child_exit_status;				/* exit status of child, should be returned in wait syscall */
 	struct thread* parent;           /* Parent process. */
 	bool child_loaded;					/* tell if the child is loaded sucessfully */
 	struct semaphore is_running;     /* Semaphore for load status. */
 // #endif
-
-
 
 	/* Owned by thread.c. */
 	unsigned magic; /* Detects stack overflow. */

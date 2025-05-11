@@ -195,25 +195,16 @@ void exit(int status) {
 	printf("%s: exit(%d)\n", cur->name, status);
 	release_all_locks();
 	// close all files
-	cur->parent->child_exit_status = status;
+	struct list_elem *e = list_begin(&cur->file_descriptors);
+	while (e != list_end(&cur->file_descriptors))
+	{
+		struct file_descriptor *fd = list_entry(e, struct file_descriptor, elem);
+		e = list_next(e);
+		close (fd->fd);
+	}
+	
 	sema_up(&cur->parent->is_running);
-	/**
-	 * Loop for all parent children and wake up children
-	 * that are waiting (blocked) for parent
-	 * 
-	 */
-    struct list_elem *e = list_begin(&cur->file_descriptors);
-    while (e != list_end(&cur->file_descriptors))
-    {
-        struct file_descriptor *fd = list_entry(e, struct file_descriptor, elem);
-        e = list_next(e);
-        close (fd->fd);
-    }
-	// for (struct list_elem *e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
-	// 	struct thread *child = list_entry(e, struct thread, allelem);
-	// 	if(child->status != THREAD_DYING)
-	// 		sema_up(&child->is_running);
-	// }
+	cur->parent->child_exit_status = status;
 	thread_exit();
 }
 

@@ -206,8 +206,8 @@ tid_t thread_create(const char *name, int priority, thread_func *function, void 
 	/* Add to run queue. */
 	thread_unblock(t);
 
-	if (thread_current() != initial_thread)
-		list_push_back (&thread_current()->child_list, &t->child_elem);
+	// if (thread_current() != initial_thread)
+	// 	list_push_back (&thread_current()->child_list, &t->child_elem);
  	t->parent = thread_current();
 
 	return tid;
@@ -447,7 +447,7 @@ static void init_thread(struct thread *t, const char *name, int priority) {
 	sema_init(&t->is_running, 0);
 	t->child_loaded = false;
 	/* initialize the list of child processes */
-	list_init(&t->child_list);
+	// list_init(&t->child_list);
 	t->child_exit_status = -2;
 	
 	list_init(&t->file_descriptors);

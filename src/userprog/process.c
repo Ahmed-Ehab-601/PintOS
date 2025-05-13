@@ -105,7 +105,6 @@ static void start_process(void *file_name_) {
 	} else {
 		parent->child_loaded = true;
 		sema_up(&parent->is_running);
-		// list_push_back(&parent->child_list, &child->child_elem);
 		sema_down(&child->is_running);
 	}
 
@@ -141,15 +140,7 @@ int process_wait(tid_t child_tid UNUSED) {
 
 	// let parent wait until child exits
 	sema_down(&curr->is_running);
-
-	// enum intr_level old_level = intr_disable();
-	// list_remove(&child->child_elem);
-	// intr_set_level (old_level);
-	// while (curr->status == THREAD_BLOCKED) thread_unblock(curr);
-	// when child exit -> lets its parent running
-	
 	return curr->child_exit_status;
-	// return -1;
 }
 
 /* Free the current process's resources. */

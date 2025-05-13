@@ -93,12 +93,6 @@ void thread_init(void) {
 	list_init(&ready_list);
 	list_init(&all_list);
 
-	// #ifdef USERPROG
-	// lock_init(&filesys_lock);
-	// lock_init(&std_input_lock);
-	// lock_init(&std_output_lock);
-	// #endif
-
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread();
 	init_thread(initial_thread, "main", PRI_DEFAULT);
@@ -206,8 +200,6 @@ tid_t thread_create(const char *name, int priority, thread_func *function, void 
 	/* Add to run queue. */
 	thread_unblock(t);
 
-	// if (thread_current() != initial_thread)
-	// 	list_push_back (&thread_current()->child_list, &t->child_elem);
  	t->parent = thread_current();
 
 	return tid;

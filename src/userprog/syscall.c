@@ -23,32 +23,33 @@ int file_add_to_thread(struct file *file, struct thread *thread);
 struct file_descriptor *file_get_fd(int fd_num, struct thread *thread);
 void close(int fd_num);
 
-
 static void syscall_handler(struct intr_frame *);
 tid_t exec(const char *cmd_line);
 int wait(tid_t e);
 
-
-void syscall_init(void) {
-	intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall"); 
+void syscall_init(void)
+{
+	intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 
 	lock_init(&filesys_lock);
 	lock_init(&std_input_lock);
 	lock_init(&std_output_lock);
 	lock_init(&exec_lock);
-	
 }
-static void syscall_handler(struct intr_frame *f) {
+static void syscall_handler(struct intr_frame *f)
+{
 	int args[3];
-	void * esp = conv_virtual(f->esp);
+	void *esp = check_address(f->esp);
 	int systemCall = *(int *)esp;
-	if (systemCall < SYS_HALT || systemCall > SYS_INUMBER){
+	if (systemCall < SYS_HALT || systemCall > SYS_INUMBER)
+	{
 		exit(-1);
 	}
 	int numberOfArgs = get_number_of_args(systemCall);
 	load_args(args, numberOfArgs, (int *)f->esp);
 
-	switch (systemCall) {
+	switch (systemCall)
+	{
 	case SYS_HALT:
 		handle_halt();
 		break;
@@ -59,31 +60,37 @@ static void syscall_handler(struct intr_frame *f) {
 		f->eax = wait(args[0]);
 		break;
 	case SYS_EXEC:
-		verify_str(args[0]);
+		check_string(args[0]);
+		lock_acquire(&exec_lock);
 		f->eax = exec(args[0]);
+		lock_release(&exec_lock);
 		break;
-	case SYS_CREATE:	// what is the "eax" ?
-		verify_str(args[0]);
+	case SYS_CREATE:
+		check_string(args[0]);
 		f->eax = create(args[0], args[1]);
 		break;
 	case SYS_REMOVE:
-		verify_str(args[0]);
+		check_string(args[0]);
 		f->eax = remove(args[0]);
 		break;
 	case SYS_OPEN:
-		verify_str(args[0]);
+		check_string(args[0]);
 		f->eax = open(args[0]);
 		break;
 	case SYS_FILESIZE:
 		f->eax = filesize(args[0]);
 		break;
 	case SYS_READ:
-		verify_buffer(args[1], args[2]); // make exce once fail and multi recurce 
+		check_buffer(args[1], args[2]);
+		lock_acquire(&filesys_lock);
 		f->eax = read(args[0], args[1], args[2]);
+		lock_release(&filesys_lock);
 		break;
-	case SYS_WRITE: 
-		verify_buffer(args[1], args[2]); // make exce once fail and multi recurce but make write badptr pass
+	case SYS_WRITE:
+		check_buffer(args[1], args[2]);
+		lock_acquire(&filesys_lock);
 		f->eax = write(args[0], args[1], args[2]);
+		lock_release(&filesys_lock);
 		break;
 	case SYS_SEEK:
 		seek(args[0], args[1]);
@@ -99,28 +106,35 @@ static void syscall_handler(struct intr_frame *f) {
 	}
 }
 
-void load_args(int *args, int numberOfArgs, int *esp) {
-	for (int i = 0; i < numberOfArgs; i++) {
-		args[i] = *(int *)conv_virtual(esp + (i + 1));
+void load_args(int *args, int numberOfArgs, int *esp)
+{
+	for (int i = 0; i < numberOfArgs; i++)
+	{
+		args[i] = *(int *)check_address(esp + (i + 1));
 	}
 }
 
- void verify_str (const void* str){
-	char* toCheck = *(char*) conv_virtual (str);
-	for ( toCheck; toCheck != 0; toCheck = *(char*) conv_virtual(++str)) ;
+void check_string(void *str)
+{
+	char *toCheck = *(char *) check_address(str);
+	for (toCheck; toCheck != 0; toCheck = *(char *)check_address(++str));
 }
 
-static void verify_buffer (void* buffer, unsigned size){
+static void check_buffer(void *buffer, unsigned size)
+{
 	int i = 0;
-	char* temp = (char*) buffer;
-	while( i < size){
-		conv_virtual((const void*) temp++);
+	char *temp = (char *)buffer;
+	while (i < size)
+	{
+		check_address((void *)temp++);
 		i++;
 	}
 }
 
-int get_number_of_args(int systemCall) {
-	switch (systemCall) {
+int get_number_of_args(int systemCall)
+{
+	switch (systemCall)
+	{
 	case SYS_HALT:
 		return 0;
 	case SYS_EXIT:
@@ -153,44 +167,21 @@ int get_number_of_args(int systemCall) {
 	}
 }
 
-void *conv_virtual(void *esp) {
-	if(esp == NULL){
+void *check_address(void *esp)
+{
+	if (esp == NULL)
+	{
 		exit(-1);
 	}
-	if (esp < (void *)0x08048000 || esp >= (void *)PHYS_BASE) {
+	if (esp < (void *)0x08048000 || esp >= (void *)PHYS_BASE)
+	{
 		exit(-1);
 	}
-	// void *ptr = pagedir_get_page(thread_current()->pagedir, esp);
-	// if (ptr == NULL) {
-	// 	exit(-1);
-	// }
-
 	return esp;
-	//return ptr;
 }
-/**
- * Closes all open file descriptors associated with the given thread `t`.
- *
- * This function is typically called when a thread exits or is terminated,
- * ensuring that all files opened by the thread are properly closed and
- * associated resources are released. It iterates through the thread's
- * list of open file descriptors, closes each file, removes the descriptor
- * from the list, and frees its memory.
- */
-// void close_all(struct thread *t)
-// {
-//     if (t == NULL) return;
-//     struct list_elem *e = list_begin(&t->file_descriptors);
-//     while (e != list_end(&t->file_descriptors))
-//     {
-//         struct file_descriptor *fd = list_entry(e, struct file_descriptor, elem);
-//         e = list_next(e);
-//         close (fd->fd);
-//     }
-// }
 
-void exit(int status) {
-	// if it's e prosses handle waited parent here !!
+void exit(int status)
+{
 	struct thread *cur = thread_current();
 	printf("%s: exit(%d)\n", cur->name, status);
 	release_all_locks();
@@ -200,15 +191,16 @@ void exit(int status) {
 	{
 		struct file_descriptor *fd = list_entry(e, struct file_descriptor, elem);
 		e = list_next(e);
-		close (fd->fd);
+		close(fd->fd);
 	}
-	
+
 	sema_up(&cur->parent->is_running);
 	cur->parent->child_exit_status = status;
 	thread_exit();
 }
 
-void handle_halt(void) { 
+void handle_halt(void)
+{
 	shutdown_power_off();
 }
 
@@ -219,7 +211,7 @@ void handle_halt(void) {
  */
 bool create(const char *file_name, unsigned initial_size)
 {
-    return file_name != NULL && filesys_create(file_name, initial_size);
+	return file_name != NULL && filesys_create(file_name, initial_size);
 }
 
 /**
@@ -228,7 +220,7 @@ bool create(const char *file_name, unsigned initial_size)
  */
 bool remove(const char *file_name)
 {
-    return file_name != NULL && filesys_remove(file_name);
+	return file_name != NULL && filesys_remove(file_name);
 }
 
 /**
@@ -250,14 +242,16 @@ bool remove(const char *file_name)
  */
 int open(const char *file_name)
 {
-    if (file_name == NULL) return INVALID_FILE;
+	if (file_name == NULL)
+		return INVALID_FILE;
 
-    struct file *file = filesys_open(file_name);
+	struct file *file = filesys_open(file_name);
 
-    if (file == NULL) return INVALID_FILE;
+	if (file == NULL)
+		return INVALID_FILE;
 
-    int fd = file_add_to_thread(file, thread_current());
-    return fd;
+	int fd = file_add_to_thread(file, thread_current());
+	return fd;
 }
 
 /**
@@ -268,16 +262,15 @@ int open(const char *file_name)
  * retrieves the file length via `file_length`.
  * If the file descriptor is not valid or the file cannot be found, the program terminates with `EXIT_FAILURE`.
  */
-int filesize (int fd_num)
+int filesize(int fd_num)
 {
-    struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
-    if (fd == NULL) return -1;
-    
-    lock_acquire(&filesys_lock);
-    int size = file_length(fd->file);
-    lock_release(&filesys_lock);
+	struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
+	if (fd == NULL)
+		return -1;
 
-    return size;
+	int size = file_length(fd->file);
+
+	return size;
 }
 
 /**
@@ -291,30 +284,29 @@ int filesize (int fd_num)
  */
 int read(int fd_num, void *buffer, unsigned size)
 {
-    if (buffer == NULL || !is_user_vaddr(buffer)) return -1;
+	if (buffer == NULL || !is_user_vaddr(buffer))
+		return -1;
 
-    if (fd_num == STDIN_FILENO)
-    {
-        uint8_t *buf = buffer;
-        lock_acquire(&std_input_lock);
-        for (unsigned i = 0; i < size; i++)
-        {
-            buf[i] = input_getc();
-        }
-        lock_release(&std_input_lock);
-        return size;
-    }
+	if (fd_num == STDIN_FILENO)
+	{
+		uint8_t *buf = buffer;
+		for (unsigned i = 0; i < size; i++)
+		{
+			buf[i] = input_getc();
+		}
+		return size;
+	}
 
-    if (fd_num == STDOUT_FILENO) return -1;
+	if (fd_num == STDOUT_FILENO)
+		return -1;
 
-    struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
-    if (fd == NULL) return -1;
+	struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
+	if (fd == NULL)
+		return -1;
 
-    lock_acquire(&filesys_lock);
-    int bytes_read = file_read(fd->file, buffer, size);
-    lock_release(&filesys_lock);
+	int bytes_read = file_read(fd->file, buffer, size);
 
-    return bytes_read;
+	return bytes_read;
 }
 
 /**
@@ -338,27 +330,27 @@ int read(int fd_num, void *buffer, unsigned size)
  */
 int write(int fd_num, const void *buffer, unsigned size)
 {
-    if (buffer == NULL || !is_user_vaddr(buffer)) return -1;
-    
-    if (fd_num == STDOUT_FILENO)
-    {
-        lock_acquire(&std_output_lock);
-        putbuf(buffer, size);
-        lock_release(&std_output_lock);
-        return size;
-    }
-    
-    if (fd_num == STDIN_FILENO) return -1;
-    
-    struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
-    if (fd == NULL) return -1;
+	if (buffer == NULL || !is_user_vaddr(buffer))
+		return -1;
+
+	if (fd_num == STDOUT_FILENO)
+	{
+		putbuf(buffer, size);
+		return size;
+	}
+
+	if (fd_num == STDIN_FILENO)
+		return -1;
+
+	struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
+	if (fd == NULL)
+		return -1;
 
 
-    lock_acquire(&filesys_lock);
-    int bytes_written = file_write(fd->file, buffer, size);
-    lock_release(&filesys_lock);
+	int bytes_written = file_write(fd->file, buffer, size);
 
-    return bytes_written;
+
+	return bytes_written;
 }
 
 /**
@@ -380,12 +372,11 @@ int write(int fd_num, const void *buffer, unsigned size)
  */
 void seek(int fd_num, unsigned position)
 {
-    struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
-    if (fd == NULL) return;
+	struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
+	if (fd == NULL)
+		return;
 
-    lock_acquire(&filesys_lock);
-    file_seek(fd->file, position);
-    lock_release(&filesys_lock);
+	file_seek(fd->file, position);
 }
 
 /**
@@ -395,14 +386,13 @@ void seek(int fd_num, unsigned position)
  */
 unsigned tell(int fd_num)
 {
-    struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
-    if (fd == NULL) return -1;
+	struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
+	if (fd == NULL)
+		return -1;
 
-    lock_acquire(&filesys_lock);
-    unsigned position = file_tell(fd->file);
-    lock_release(&filesys_lock);
+	unsigned position = file_tell(fd->file);
 
-    return position;
+	return position;
 }
 
 /**
@@ -412,19 +402,17 @@ unsigned tell(int fd_num)
  */
 void close(int fd_num)
 {
-    if (fd_num == STDIN_FILENO || fd_num == STDOUT_FILENO) return;
-    struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
-    if (fd == NULL) return;
+	if (fd_num == STDIN_FILENO || fd_num == STDOUT_FILENO)
+		return;
+	struct file_descriptor *fd = file_get_fd(fd_num, thread_current());
+	if (fd == NULL)
+		return;
 
-    lock_acquire(&filesys_lock);
-    file_close(fd->file);
-    lock_release(&filesys_lock);
+	file_close(fd->file);
 
-    list_remove(&fd->elem);
-    free(fd);
+	list_remove(&fd->elem);
+	free(fd);
 }
-
-
 
 /**
  * Retrieves the file descriptor structure associated with a given file descriptor `fd_num` for the specified thread `t`.
@@ -433,17 +421,18 @@ void close(int fd_num)
  */
 struct file_descriptor *file_get_fd(int fd_num, struct thread *thread)
 {
-    if (fd_num < 0 || fd_num == STDIN_FILENO || fd_num == STDOUT_FILENO || thread == NULL) return NULL;
+	if (fd_num < 0 || fd_num == STDIN_FILENO || fd_num == STDOUT_FILENO || thread == NULL)
+		return NULL;
 
-    for (struct list_elem *e = list_begin(&thread->file_descriptors); e != list_end(&thread->file_descriptors); e = list_next(e))
-    {
-        struct file_descriptor *fd = list_entry(e, struct file_descriptor, elem);
-        if (fd->fd == fd_num) return fd;
-    }
+	for (struct list_elem *e = list_begin(&thread->file_descriptors); e != list_end(&thread->file_descriptors); e = list_next(e))
+	{
+		struct file_descriptor *fd = list_entry(e, struct file_descriptor, elem);
+		if (fd->fd == fd_num)
+			return fd;
+	}
 
-    return NULL;
+	return NULL;
 }
-
 
 /**
  * Adds the given file `file` to the file descriptor list of the current thread `thread`.
@@ -456,31 +445,26 @@ struct file_descriptor *file_get_fd(int fd_num, struct thread *thread)
  */
 int file_add_to_thread(struct file *file, struct thread *thread)
 {
-    if (file == NULL || thread == NULL) return INVALID_FILE;
+	if (file == NULL || thread == NULL)
+		return INVALID_FILE;
 
-    struct file_descriptor *fd = malloc(sizeof(struct file_descriptor));
-    if (fd == NULL) return INVALID_FD;
+	struct file_descriptor *fd = malloc(sizeof(struct file_descriptor));
+	if (fd == NULL)
+		return INVALID_FD;
 
+	fd->file = file;
+	fd->fd = thread->next_fd;
 
-    fd->file = file;
-    fd->fd = thread->next_fd;
-
-	lock_acquire(&filesys_lock);
 	thread->next_fd++;
-    list_push_back(&thread->file_descriptors, &fd->elem);
-    lock_release(&filesys_lock);
-  
+	list_push_back(&thread->file_descriptors, &fd->elem);
 
-    return fd->fd;
+	return fd->fd;
 }
 int wait(tid_t e) { return process_wait(e); }
 
-tid_t exec(const char *cmd_line) {
+tid_t exec(const char *cmd_line)
+{
 	int ret;
-	
-	lock_acquire(&exec_lock);
-	ret = process_execute (cmd_line);
-	lock_release(&exec_lock);
+	ret = process_execute(cmd_line);
 	return ret;
 }
-

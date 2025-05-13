@@ -17,11 +17,6 @@ struct file_descriptor {
 	struct list_elem elem; 		/* List element for file descriptor list. */
 };
 
-/**
- * Returned by `wait(pid_t pid)` syscall if:
- * - `pid` does not refer to a direct child of the calling process.
- * - The process that calls wait has already called wait on `pid`.
- */
 
 void syscall_init (void);
 void* conv_virtual (void * esp);

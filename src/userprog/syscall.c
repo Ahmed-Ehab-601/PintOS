@@ -252,15 +252,11 @@ int open(const char *file_name)
 {
     if (file_name == NULL) return INVALID_FILE;
 
-	//lock_acquire(&filesys_lock);
     struct file *file = filesys_open(file_name);
-	//lock_release(&filesys_lock);
 
     if (file == NULL) return INVALID_FILE;
 
-	// lock_acquire(&filesys_lock);
     int fd = file_add_to_thread(file, thread_current());
-	// lock_release(&filesys_lock);
     return fd;
 }
 
